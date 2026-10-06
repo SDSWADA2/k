@@ -1,0 +1,244 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =================== AUTH ===================
+model User {
+  id        String   @id @default(cuid())
+  nama      String
+  email     String   @unique
+  password  String
+  role      String   @default("KASIR")
+  aktif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transaksi Transaksi[]
+
+  @@map("users")
+}
+
+// =================== PELANGGAN ===================
+model Pelanggan {
+  id         String      @id @default(cuid())
+  kode       String      @unique
+  nama       String
+  telepon    String?
+  email      String?
+  alamat     String?
+  tipe       String      @default("UMUM")
+  poin       Int         @default(0)
+  aktif      Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  kendaraan  Kendaraan[]
+  transaksi  Transaksi[]
+
+  @@map("pelanggan")
+}
+
+// =================== KENDARAAN ===================
+model Kendaraan {
+  id           String    @id @default(cuid())
+  pelangganId  String
+  nomorPolisi  String    @unique
+  merek        String
+  model        String
+  tahun        Int?
+  warna        String?
+  nomorRangka  String?
+  nomorMesin   String?
+  jenis        String @default("MOTOR")
+  transmisi    String?
+  catatan      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  pelanggan    Pelanggan @relation(fields: [pelangganId], references: [id])
+  transaksi    Transaksi[]
+
+  @@map("kendaraan")
+}
+
+// =================== MEKANIK ===================
+model Mekanik {
+  id          String    @id @default(cuid())
+  kode        String    @unique
+  nama        String
+  telepon     String?
+  spesialisasi String?
+  aktif       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  detailTransaksi DetailTransaksi[]
+
+  @@map("mekanik")
+}
+
+// =================== SPARE PART ===================
+model Kategori {
+  id         String      @id @default(cuid())
+  nama       String
+  deskripsi  String?
+  createdAt  DateTime    @default(now())
+
+  sparePart  SparePart[]
+
+  @@map("kategori")
+}
+
+model SparePart {
+  id           String    @id @default(cuid())
+  kode         String    @unique
+  nama         String
+  kategoriId   String?
+  satuan       String    @default("pcs")
+  hargaBeli    Float     @default(0)
+  hargaJual    Float     @default(0)
+  stok         Int       @default(0)
+  stokMinimum  Int       @default(5)
+  lokasi       String?
+  aktif        Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  kategori        Kategori?         @relation(fields: [kategoriId], references: [id])
+  detailTransaksi DetailTransaksi[]
+  detailPembelian DetailPembelian[]
+
+  @@map("spare_part")
+}
+
+// =================== JASA SERVICE ===================
+model JasaService {
+  id          String    @id @default(cuid())
+  kode        String    @unique
+  nama        String
+  deskripsi   String?
+  harga       Float
+  estimasiJam Float?
+  aktif       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  detailTransaksi DetailTransaksi[]
+
+  @@map("jasa_service")
+}
+
+// =================== SUPPLIER ===================
+model Supplier {
+  id        String    @id @default(cuid())
+  nama      String
+  telepon   String?
+  email     String?
+  alamat    String?
+  aktif     Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  pembelian Pembelian[]
+
+  @@map("supplier")
+}
+
+// =================== TRANSAKSI ===================
+model Transaksi {
+  id             String           @id @default(cuid())
+  nomorInvoice   String           @unique
+  pelangganId    String?
+  kendaraanId    String?
+  kasirId        String?
+  tanggal        DateTime         @default(now())
+  status         String           @default("ANTRI")
+  metodePembayaran String?
+  subtotal       Float            @default(0)
+  diskon         Float            @default(0)
+  pajak          Float            @default(0)
+  total          Float            @default(0)
+  dibayar        Float            @default(0)
+  kembalian      Float            @default(0)
+  catatanKeluhan String?
+  catatanMekanik String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  pelanggan Pelanggan?        @relation(fields: [pelangganId], references: [id])
+  kendaraan Kendaraan?        @relation(fields: [kendaraanId], references: [id])
+  kasir     User?             @relation(fields: [kasirId], references: [id])
+  detail    DetailTransaksi[]
+
+  @@map("transaksi")
+}
+
+model DetailTransaksi {
+  id            String   @id @default(cuid())
+  transaksiId   String
+  tipe          String
+  sparePartId   String?
+  jasaServiceId String?
+  mekanikId     String?
+  nama          String
+  jumlah        Int      @default(1)
+  hargaSatuan   Float
+  diskon        Float    @default(0)
+  subtotal      Float
+
+  transaksi   Transaksi    @relation(fields: [transaksiId], references: [id], onDelete: Cascade)
+  sparePart   SparePart?   @relation(fields: [sparePartId], references: [id])
+  jasaService JasaService? @relation(fields: [jasaServiceId], references: [id])
+  mekanik     Mekanik?     @relation(fields: [mekanikId], references: [id])
+
+  @@map("detail_transaksi")
+}
+
+// =================== PEMBELIAN ===================
+model Pembelian {
+  id            String         @id @default(cuid())
+  nomorPO       String         @unique
+  supplierId    String?
+  tanggal       DateTime       @default(now())
+  status        String @default("PENDING")
+  total         Float          @default(0)
+  catatan       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  supplier Supplier?         @relation(fields: [supplierId], references: [id])
+  detail   DetailPembelian[]
+
+  @@map("pembelian")
+}
+
+model DetailPembelian {
+  id          String    @id @default(cuid())
+  pembelianId String
+  sparePartId String
+  jumlah      Int
+  hargaBeli   Float
+  subtotal    Float
+
+  pembelian Pembelian @relation(fields: [pembelianId], references: [id], onDelete: Cascade)
+  sparePart SparePart @relation(fields: [sparePartId], references: [id])
+
+  @@map("detail_pembelian")
+}
+
+// =================== PENGATURAN ===================
+model Pengaturan {
+  id    String @id @default(cuid())
+  kunci String @unique
+  nilai String
+
+  @@map("pengaturan")
+}
