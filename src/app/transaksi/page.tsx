@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge, Input } from "@/components/ui";
 import { formatDateTime, formatRupiah } from "@/lib/utils";
@@ -176,16 +177,26 @@ export default function TransaksiPage() {
                         <td className="text-xs text-slate-400">{formatDateTime(tx.tanggal)}</td>
                         <td>
                           <div className="flex items-center justify-end gap-1">
-                            <a href={`/transaksi/${tx.id}`} className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-violet-700 hover:bg-violet-50 rounded-md transition-colors">Detail</a>
-                            <a href={`/transaksi/${tx.id}/invoice`} target="_blank" className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors">Invoice</a>
+                            <Link href={`/transaksi/${tx.id}`} className="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-violet-700 hover:bg-violet-50 rounded-lg transition-colors">
+                              Detail
+                            </Link>
+                            <a href={`/transaksi/${tx.id}/invoice`} target="_blank" className="px-2.5 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100 rounded-lg transition-colors">
+                              🖨️ Cetak
+                            </a>
                             {tx.status === "ANTRI" && (
-                              <button onClick={() => handleUpdateStatus(tx.id, "PROSES")} className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-amber-700 hover:bg-amber-50 rounded-md transition-colors">Proses</button>
+                              <button onClick={() => handleUpdateStatus(tx.id, "PROSES")} className="px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 rounded-lg transition-colors">
+                                Kerjakan
+                              </button>
                             )}
                             {tx.status === "PROSES" && (
-                              <button onClick={() => handleUpdateStatus(tx.id, "SELESAI")} className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors">Selesai</button>
+                              <button onClick={() => handleUpdateStatus(tx.id, "SELESAI")} className="px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors">
+                                Selesai
+                              </button>
                             )}
                             {(tx.status === "ANTRI" || tx.status === "PROSES") && (
-                              <button onClick={() => handleCancel(tx.id, tx.nomorInvoice)} className="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">Batal</button>
+                              <button onClick={() => handleCancel(tx.id, tx.nomorInvoice)} className="px-2 py-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                                Batal
+                              </button>
                             )}
                           </div>
                         </td>

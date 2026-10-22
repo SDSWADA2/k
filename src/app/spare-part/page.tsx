@@ -17,7 +17,8 @@ interface SparePart {
   stokMinimum: number;
   lokasi?: string;
   aktif: boolean;
-  kategori?: { nama: string };
+  kategoriId?: string | null;
+  kategori?: { id: string; nama: string } | null;
 }
 
 interface Kategori {
@@ -48,6 +49,7 @@ export default function SparePartPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [selectedKategori, setSelectedKategori] = useState("");
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<SparePart | null>(null);
@@ -58,7 +60,14 @@ export default function SparePartPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/spare-part?search=${encodeURIComponent(search)}&page=${page}&limit=${limit}`);
+      const params = new URLSearchParams({
+        search,
+        page: String(page),
+        limit: String(limit),
+      });
+      if (selectedKategori) params.set("kategoriId", selectedKategori);
+
+      const res = await fetch(`/api/spare-part?${params}`);
       const json = await res.json();
       setData(json.data ?? []);
       setTotal(json.total ?? 0);
@@ -67,7 +76,7 @@ export default function SparePartPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, page]);
+  }, [search, page, selectedKategori]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => {
@@ -78,9 +87,14 @@ export default function SparePartPage() {
   const openEdit = (p: SparePart) => {
     setEditTarget(p);
     setForm({
-      nama: p.nama, kategoriId: "", satuan: p.satuan,
-      hargaBeli: String(p.hargaBeli), hargaJual: String(p.hargaJual),
-      stok: String(p.stok), stokMinimum: String(p.stokMinimum), lokasi: p.lokasi ?? "",
+      nama: p.nama,
+      kategoriId: p.kategoriId || p.kategori?.id || "",
+      satuan: p.satuan,
+      hargaBeli: String(p.hargaBeli),
+      hargaJual: String(p.hargaJual),
+      stok: String(p.stok),
+      stokMinimum: String(p.stokMinimum),
+      lokasi: p.lokasi ?? "",
     });
     setModalOpen(true);
   };
@@ -118,13 +132,27 @@ export default function SparePartPage() {
           </Button>
         </div>
 
-        <div className="max-w-xs">
-          <Input
-            placeholder="Cari nama, kode..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="max-w-xs flex-1">
+            <Input
+              placeholder="Cari nama, kode..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
+            />
+          </div>
+          <select
+            value={selectedKategori}
+            onChange={(e) => { setSelectedKategori(e.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-300 text-xs px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
+          >
+            <option value="">Semua Kategori</option>
+            {kategoriList.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.nama}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

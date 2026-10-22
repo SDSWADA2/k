@@ -36,3 +36,7 @@ next-env.d.ts
 # prisma local dev db
 prisma/*.db
 prisma/*.db-journal
+
+# local shims
+powershell.cmd
+

@@ -48,6 +48,17 @@ export default function MekanikPage() {
     finally { setSubmitting(false); }
   };
 
+  const handleDelete = async (id: string, nama: string) => {
+    if (!confirm(`Nonaktifkan mekanik "${nama}"?`)) return;
+    try {
+      await fetch(`/api/mekanik/${id}`, { method: "DELETE" });
+      toast.success("Mekanik dinonaktifkan");
+      fetchData();
+    } catch {
+      toast.error("Gagal menonaktifkan mekanik");
+    }
+  };
+
   return (
     <AppShell title="Data Mekanik">
       <div className="space-y-5">
@@ -88,8 +99,9 @@ export default function MekanikPage() {
                   {m.spesialisasi && <p className="text-xs text-violet-600 mt-0.5 font-medium">🔧 {m.spesialisasi}</p>}
                   {m.telepon && <p className="text-xs text-slate-500 mt-0.5">📱 {m.telepon}</p>}
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <button onClick={() => openEdit(m)} className="text-xs text-slate-600 hover:text-violet-700 font-medium px-2 py-1 hover:bg-violet-50 rounded-md transition-colors">Edit</button>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <button onClick={() => openEdit(m)} className="text-xs text-slate-600 hover:text-violet-700 font-semibold px-2 py-1 hover:bg-violet-50 rounded-md transition-colors">Edit</button>
+                  <button onClick={() => handleDelete(m.id, m.nama)} className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 hover:bg-red-50 rounded-md transition-colors">Nonaktifkan</button>
                 </div>
               </div>
             ))

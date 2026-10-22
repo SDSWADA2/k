@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button, Input, Modal } from "@/components/ui";
+import { formatDateTime, formatRupiah } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 interface Kendaraan {
@@ -12,6 +13,22 @@ interface Kendaraan {
 }
 
 interface Pelanggan { id: string; kode: string; nama: string; telepon?: string; }
+
+interface HistoryItem {
+  id: string;
+  nomorInvoice: string;
+  tanggal: string;
+  total: number;
+  status: string;
+  catatanKeluhan?: string;
+  detail: Array<{
+    id: string;
+    nama: string;
+    jumlah: number;
+    subtotal: number;
+    mekanik?: { nama: string };
+  }>;
+}
 
 const defaultForm = {
   pelangganId: "", nomorPolisi: "", merek: "", model: "",
@@ -35,6 +52,26 @@ export default function KendaraanPage() {
   const [pelangganSearch, setPelangganSearch] = useState("");
   const [pelangganList, setPelangganList] = useState<Pelanggan[]>([]);
   const [selectedPelanggan, setSelectedPelanggan] = useState<Pelanggan | null>(null);
+
+  // History Modal
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<Kendaraan | null>(null);
+  const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const handleViewHistory = async (k: Kendaraan) => {
+    setSelectedVehicle(k);
+    setLoadingHistory(true);
+    setHistoryModalOpen(true);
+    try {
+      const res = await fetch(`/api/kendaraan/${k.id}/riwayat`);
+      if (res.ok) setHistoryList(await res.json());
+    } catch {
+      toast.error("Gagal memuat riwayat");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -106,7 +143,14 @@ export default function KendaraanPage() {
             ) : (
               <table className="data-table">
                 <thead>
-                  <tr><th>Nopol</th><th>Kendaraan</th><th>Tahun</th><th>Warna</th><th>Pemilik</th></tr>
+                  <tr>
+                    <th>Nopol</th>
+                    <th>Kendaraan</th>
+                    <th>Tahun</th>
+                    <th>Warna</th>
+                    <th>Pemilik</th>
+                    <th className="text-right">Aksi</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {data.map((k) => (
@@ -129,6 +173,17 @@ export default function KendaraanPage() {
                         <div>
                           <p className="text-sm font-medium text-slate-900">{k.pelanggan?.nama ?? "-"}</p>
                           <p className="text-xs text-slate-400">{k.pelanggan?.telepon}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleViewHistory(k)}
+                            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-violet-50 hover:bg-violet-600 text-violet-700 hover:text-white transition-colors"
+                          >
+                            📋 Riwayat Servis
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -188,6 +243,63 @@ export default function KendaraanPage() {
             <Button type="submit" loading={submitting}>Tambah Kendaraan</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Service History Modal */}
+      <Modal
+        isOpen={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        title={`Riwayat Servis ${selectedVehicle?.nomorPolisi ?? ""}`}
+        size="lg"
+      >
+        <div className="p-5 space-y-3">
+          {selectedVehicle && (
+            <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-slate-900 text-sm">{selectedVehicle.nomorPolisi}</span>
+                <span className="text-slate-500 ml-2">
+                  {selectedVehicle.merek} {selectedVehicle.model}
+                </span>
+              </div>
+              <span className="text-slate-500 font-medium">Pemilik: {selectedVehicle.pelanggan?.nama}</span>
+            </div>
+          )}
+
+          {loadingHistory ? (
+            <div className="p-8 text-center text-xs text-slate-400">Memuat riwayat servis...</div>
+          ) : historyList.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 italic">
+              Belum ada riwayat transaksi servis untuk kendaraan ini.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+              {historyList.map((item) => (
+                <div key={item.id} className="py-3 space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-violet-700">{item.nomorInvoice}</span>
+                    <span className="text-slate-400">{formatDateTime(item.tanggal)}</span>
+                  </div>
+                  {item.catatanKeluhan && (
+                    <p className="text-slate-600 italic bg-amber-50/50 p-1.5 rounded">
+                      Keluhan: &quot;{item.catatanKeluhan}&quot;
+                    </p>
+                  )}
+                  <div className="space-y-0.5 pl-2">
+                    {item.detail.map((d) => (
+                      <div key={d.id} className="flex justify-between text-[11px] text-slate-600">
+                        <span>• {d.nama} ({d.jumlah}x)</span>
+                        <span className="font-semibold text-slate-800">{formatRupiah(d.subtotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <span className="font-bold text-slate-900">Total: {formatRupiah(item.total)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Modal>
     </AppShell>
   );

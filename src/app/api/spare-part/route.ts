@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         skip,
         take: limit,
         orderBy: { nama: "asc" },
-        include: { kategori: { select: { nama: true } } },
+        include: { kategori: { select: { id: true, nama: true } } },
       }),
       prisma.sparePart.count({ where }),
     ]);

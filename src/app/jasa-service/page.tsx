@@ -51,6 +51,17 @@ export default function JasaServicePage() {
     finally { setSubmitting(false); }
   };
 
+  const handleDelete = async (id: string, nama: string) => {
+    if (!confirm(`Nonaktifkan jasa "${nama}"?`)) return;
+    try {
+      await fetch(`/api/jasa-service/${id}`, { method: "DELETE" });
+      toast.success("Jasa dinonaktifkan");
+      fetchData();
+    } catch {
+      toast.error("Gagal menonaktifkan jasa");
+    }
+  };
+
   const filtered = data.filter(j => j.nama.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -92,7 +103,8 @@ export default function JasaServicePage() {
                       <td className="font-semibold text-violet-700">{formatRupiah(j.harga)}</td>
                       <td>
                         <div className="flex justify-end gap-1">
-                          <button onClick={() => openEdit(j)} className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-violet-700 hover:bg-violet-50 rounded-md transition-colors">Edit</button>
+                          <button onClick={() => openEdit(j)} className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-violet-700 hover:bg-violet-50 rounded-md transition-colors">Edit</button>
+                          <button onClick={() => handleDelete(j.id, j.nama)} className="px-2.5 py-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors">Nonaktifkan</button>
                         </div>
                       </td>
                     </tr>
