@@ -1,42 +1,63 @@
-# Laporan Audit & Full Upgrade Menyeluruh — KasirBengkel
+# Laporan Audit, Pembersihan & Full Upgrade Menyeluruh — KasirBengkel
 
 ## 1. Ringkasan Eksekutif
-Telah dilakukan peninjauan menyeluruh (*deep-dive audit*) serta pemutakhiran total (*full upgrade*) terhadap seluruh lapisan arsitektur aplikasi **KasirBengkel** (Next.js 14 App Router, SQLite/Prisma ORM, Tailwind CSS, Recharts, XLSX).
+Telah diselesaikan tinjauan ulang, perbaikan arsitektur, dan pembersihan total (*full perfection & cleanup*) pada seluruh lapisan sistem **KasirBengkel** (Next.js 14 App Router, SQLite/Prisma ORM, Tailwind CSS, Recharts, XLSX).
 
-Seluruh temuan arsitektural yang sebelumnya belum tersambung (*orphan routes*), kegagalan kompilasi database, keterbatasan modul POS, serta ketiadaan fitur manajemen stok dan ekspor telah diperbaiki tuntas dengan **status kompilasi produksi 100% lulus (29 routes, 0 TypeScript/ESLint error)** dan seluruh endpoint aktif mengembalikan **HTTP 200 OK**.
+Seluruh sistem kini berada dalam kondisi **produksi siap pakai (Production Ready)**:
+- **Build Produksi:** Lulus 100% tanpa error (`Exit Code: 0`), menghasilkan 29 rute Next.js.
+- **Validasi Live Server:** Seluruh 14 endpoint utama mengembalikan respon **`HTTP 200 OK`**.
+- **Integritas Kode:** Seluruh dead code telah dibersihkan secara bersih (*zero orphan files*).
 
 ---
 
-## 2. Rincian Masalah yang Ditemukan & Solusi
+## 2. Rincian Peningkatan & Pemutakhiran Menyeluruh
 
-| Area / Modul | Masalah yang Ditemukan | Tindakan Perbaikan & Upgrade |
+| Modul | Status Sebelum | Tindakan & Peningkatan Baru |
 |---|---|---|
-| **Database Seeding (`prisma/seed.ts`)** | `skipDuplicates: true` tidak didukung oleh SQLite provider pada Prisma, menyebabkan seeding gagal. | Diubah menjadi loop `upsert` idempoten. Seluruh relasi seed (Kategori, Spare Part, Mekanik, Pelanggan, Jasa Service, Pengaturan) kini ter-seed sempurna. |
-| **Modul Manajemen Stok (`/stok`)** | Tautan menu di sidebar ada, namun halaman belum dibuat (*404 Not Found*). Modul Supplier dan Restock PO belum memiliki backend dan UI. | Dibuat halaman [src/app/stok/page.tsx](file:///e:/Kasir/src/app/stok/page.tsx) lengkap dengan **3 Tab Fungsional**: <br>1. *Monitoring & Stok Opname Realtime* (dengan alasan & selisih)<br>2. *Riwayat Pembelian & PO Restock* (multi-item & auto-update stok)<br>3. *Manajemen Master Supplier* (CRUD lengkap). |
-| **Detail & Alur Transaksi (`/transaksi/[id]`)** | Halaman detail transaksi tidak ada (*404 Not Found*) padahal ditautkan dari daftar transaksi & dashboard. | Dibuat halaman [src/app/transaksi/[id]/page.tsx](file:///e:/Kasir/src/app/transaksi/[id]/page.tsx) lengkap dengan rincian SPK, data kendaraan/pelanggan, progress status (ANTRI $\rightarrow$ PROSES $\rightarrow$ SELESAI $\rightarrow$ LUNAS), dan pembatalan transaksi dengan pengembalian stok otomatis. |
-| **Cetak Nota / Struk (`/transaksi/[id]/invoice`)** | Event handler `onClick={() => window.print()}` diletakkan di Server Component yang melanggar aturan Next.js 14 App Router. | Diekstrak menjadi Client Component [InvoiceClient.tsx](file:///e:/Kasir/src/app/transaksi/[id]/invoice/InvoiceClient.tsx). Ditambahkan fitur sakelar ukuran kertas kasir (**58mm & 80mm thermal**), tombol cetak, tombol bagikan struk via **WhatsApp Web**, dan salin tautan struk. |
-| **Kasir & Point of Sale (`/kasir`)** | Kasir lambat jika pelanggan atau kendaraan baru belum terdaftar. Belum ada riwayat servis kendaraan sebelumnya, belum ada draft/hold cart, dan belum ada tombol uang pas. | Ditingkatkan secara masif:<br>• **Modal Cepat Tambah Pelanggan** langsung dari POS.<br>• **Modal Cepat Tambah Kendaraan** langsung dari POS.<br>• **Modal Riwayat Servis Kendaraan** untuk melihat rekam jejak servis masa lalu sebelum transaksi.<br>• **Fitur Simpan / Hold Draft Keranjang** (tersimpan di LocalStorage).<br>• **Tombol Pecahan Uang Cepat** (Uang Pas, 50k, 100k, 150k, 200k, 500k).<br>• Validasi stok langsung agar kasir tidak menjual melebihi persediaan. |
-| **Ekspor Laporan (`/laporan`)** | Tombol "Export Excel" sebelumnya hanya memanggil `alert()` tanpa ekspor data nyata. | Diintegrasikan pustaka `xlsx` (SheetJS) untuk mengekspor multi-sheet Excel asli: Sheet Ringkasan Eksekutif, Sheet Rincian Transaksi, Sheet Penjualan Spare Part, dan Sheet Performa Mekanik. Ditambahkan filter preset: *Hari Ini*, *Bulan Ini*, *Bulan Lalu*, *Tahun Ini*. |
-| **Dashboard (`/dashboard`)** | Metrik terbatas dan tidak responsif terhadap peringatan stok menipis. | Ditingkatkan dengan **6 Kartu Metrik Finansial & Operasional**, banner peringatan stok menipis darurat, pintasan cepat, dan tabel aktivitas mutakhir. |
-| **Layout Shell (`AppShell.tsx`)** | Ikon lonceng notifikasi hanya elemen statis tanpa interaksi. | Ditransformasikan menjadi menu interaktif yang mendeteksi stok spare part di bawah batas minimum dan antrean servis secara realtime. |
-| **Master Data (`/spare-part`, `/kendaraan`, dll)** | Edit spare part sempat mereset kategori menjadi null; kendaraan tidak bisa dicek riwayat servisnya; mekanik/jasa tidak ada tombol hapus. | Diperbaiki seluruh payload update, ditambahkan modal rekam jejak servis pada halaman kendaraan, serta aksi deaktifasi/hapus pada mekanik dan jasa service. |
+| **Kendaraan (`/kendaraan`)** | Hanya ada fitur Tambah dan Riwayat Servis; tidak ada endpoint & UI untuk Edit dan Hapus. | • Dibuat [src/app/api/kendaraan/[id]/route.ts](file:///e:/Kasir/src/app/api/kendaraan/[id]/route.ts) dengan dukungan `GET`, `PUT`, dan `DELETE`.<br>• Dilengkapi proteksi integritas: kendaraan yang memiliki riwayat transaksi tidak dapat dihapus sembarangan.<br>• Diperbarui [src/app/kendaraan/page.tsx](file:///e:/Kasir/src/app/kendaraan/page.tsx) dengan tombol aksi **Edit** & **Hapus** terintegrasi. |
+| **Pembersihan Kode Mati (*Dead Code Cleanup*)** | Terdapat file peninggalan versi lama (`audit.ts`, `db-storage.ts`, dan skrip hapus sementara) yang tidak lagi digunakan. | Dihapus secara aman. Struktur [src/lib](file:///e:/Kasir/src/lib) kini ramping dan hanya berisi modul aktif (`prisma.ts`, `auth.ts`, `utils.ts`, `validations.ts`). |
+| **Modul Manajemen Stok (`/stok`)** | Sebelumnya belum ada antarmuka dan backend restock/supplier (*404 Not Found*). | Telah dibangun modul lengkap dengan **3 Tab Interaktif**:<br>1. *Stok Opname*: Penyesuaian stok fisik realtime dengan catatan alasan & selisih.<br>2. *Riwayat Pembelian & PO*: Pembuatan PO multi-item dengan auto-increment stok saat status `SELESAI`.<br>3. *Master Supplier*: CRUD supplier terintegrasi. |
+| **Kasir & Point of Sale (`/kasir`)** | Alur lambat jika pelanggan/kendaraan baru belum terdaftar; tidak ada tombol uang pecahan; tidak ada draft keranjang. | • **Quick Add Pelanggan & Kendaraan** langsung dari modal POS tanpa pindah halaman.<br>• **Modal Riwayat Servis Kendaraan** untuk melihat rekam jejak servis sebelum transaksi.<br>• **Hold/Draft Cart** yang tersimpan di LocalStorage.<br>• **Tombol Pecahan Uang Cepat** (Uang Pas, 50k, 100k, 150k, 200k, 500k).<br>• Validasi stok langsung agar tidak minus. |
+| **Detail & Alur Transaksi (`/transaksi/[id]`)** | Halaman detail transaksi tidak ada (*404 Not Found*). | Dibuat halaman [src/app/transaksi/[id]/page.tsx](file:///e:/Kasir/src/app/transaksi/[id]/page.tsx) lengkap dengan alur SPK (Antri $\rightarrow$ Proses $\rightarrow$ Selesai $\rightarrow$ Lunas), pengiriman invoice ke WhatsApp pelanggan, dan pembatalan dengan **pengembalian stok otomatis**. |
+| **Cetak Struk Kasir (`/transaksi/[id]/invoice`)** | Event handler `window.print()` diletakkan di Server Component yang melanggar aturan Next.js 14. | Diekstrak ke Client Component [InvoiceClient.tsx](file:///e:/Kasir/src/app/transaksi/[id]/invoice/InvoiceClient.tsx) dengan sakelar ukuran thermal (**58mm & 80mm**), tombol cetak, kirim WhatsApp, dan salin tautan struk. |
+| **Laporan & Export Excel (`/laporan`)** | Tombol export hanya memanggil `alert()`. | Diintegrasikan SheetJS (`xlsx`) untuk mengekspor multi-sheet Excel asli (*Ringkasan Eksekutif, Rincian Transaksi, Penjualan Spare Part, Performa Mekanik*) dengan filter preset tanggal (*Hari Ini, Bulan Ini, Bulan Lalu, Tahun Ini*). |
+| **Dashboard (`/dashboard`)** | Metrik terbatas dan tidak responsif terhadap peringatan stok kritis. | Ditingkatkan dengan **6 Kartu Metrik KPI**, banner peringatan darurat stok menipis, pintasan cepat, dan tabel aktivitas mutakhir. |
+| **Notifikasi Header (`AppShell.tsx`)** | Ikon lonceng statis. | Diubah menjadi dropdown interaktif yang mendeteksi stok kritis dan antrean menunggu servis secara realtime. |
 
 ---
 
-## 3. Struktur API Baru yang Ditambahkan
+## 3. Daftar Endpoint API Aktif
 
-1. `GET /api/supplier` & `POST /api/supplier` — Manajemen data supplier spare part.
-2. `PUT /api/supplier/[id]` & `DELETE /api/supplier/[id]` — Pembaruan dan penghapusan supplier.
-3. `GET /api/pembelian` & `POST /api/pembelian` — Pembuatan Purchase Order (Restock) multi-item.
-4. `PUT /api/pembelian/[id]` — Pengubahan status PO (`SELESAI` otomatis menambah stok spare part terkait, `BATAL` otomatis membatalkan).
-5. `POST /api/spare-part/stok-opname` — Penyesuaian stok fisik (opname) dengan audit log alasan penyesuaian.
-6. `GET /api/kendaraan/[id]/riwayat` — Pengambilan seluruh rekam jejak servis historis berdasarkan nomor polisi / ID kendaraan.
+1. `GET, POST /api/transaksi` — Pembuatan transaksi & pencarian invoice.
+2. `GET, PATCH, DELETE /api/transaksi/[id]` — Detail transaksi, update status, dan pembatalan (kembalikan stok).
+3. `GET, POST /api/kendaraan` — Daftar dan pendaftaran kendaraan.
+4. `GET, PUT, DELETE /api/kendaraan/[id]` — Detail, update, dan hapus kendaraan (dengan cek relasi transaksi).
+5. `GET /api/kendaraan/[id]/riwayat` — Riwayat servis per unit kendaraan.
+6. `GET, POST /api/pelanggan` — Daftar dan registrasi pelanggan.
+7. `GET, PUT, DELETE /api/pelanggan/[id]` — Detail, update, dan nonaktifkan pelanggan.
+8. `GET, POST /api/spare-part` — Katalog spare part & filter stok kritis.
+9. `GET, PUT, DELETE /api/spare-part/[id]` — Detail, update, dan hapus spare part.
+10. `POST /api/spare-part/stok-opname` — Penyesuaian stok opname fisik.
+11. `GET, POST /api/supplier` — Daftar dan tambah supplier.
+12. `PUT, DELETE /api/supplier/[id]` — Update dan hapus supplier.
+13. `GET, POST /api/pembelian` — Daftar PO restock dan pembuatan PO multi-item.
+14. `PUT /api/pembelian/[id]` — Update status PO (`SELESAI` otomatis menambah stok).
+15. `GET, POST /api/mekanik` & `PUT, DELETE /api/mekanik/[id]` — Manajemen tim mekanik.
+16. `GET, POST /api/jasa-service` & `PUT, DELETE /api/jasa-service/[id]` — Katalog jasa servis bengkel.
+17. `GET, PUT /api/pengaturan` — Konfigurasi nama bengkel, alamat, telepon, dan pajak.
+18. `GET /api/dashboard/stats` & `GET /api/dashboard/recent-transaksi` — Ringkasan metrik dashboard.
+19. `GET /api/laporan/pendapatan` — Data agregat laporan pendapatan & chart.
 
 ---
 
-## 4. Hasil Verifikasi Sistem
+## 4. Hasil Verifikasi Akhir
 
-- **Kompilasi Produksi (`npm run build`):**
-  Lulus 100% tanpa error (`Exit Code: 0`).
-- **Uji Server Live (HTTP GET Check):**
-  Semua 14 endpoint utama (`/dashboard`, `/kasir`, `/stok`, `/laporan`, `/transaksi`, `/spare-part`, `/kendaraan`, `/pelanggan`, `/mekanik`, `/jasa-service`, `/pengaturan`, `/api/supplier`, `/api/pembelian`, `/api/spare-part`) merespon dengan status **200 OK**.
+- **Next.js Production Build (`npm run build`):**
+  ```bash
+  ✓ Compiled successfully
+  ✓ Generating static pages (29/29)
+  ✓ Finalizing page optimization
+  Exit code: 0
+  ```
+- **Live Endpoint Sanity Check:**
+  Semua 14 endpoint utama mengembalikan respon **`HTTP 200 OK`**.
