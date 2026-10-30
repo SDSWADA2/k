@@ -193,6 +193,11 @@ export default function TransaksiPage() {
                                 Selesai
                               </button>
                             )}
+                            {tx.status === "SELESAI" && (
+                              <Link href={`/transaksi/${tx.id}`} className="px-2 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
+                                💳 Bayar
+                              </Link>
+                            )}
                             {(tx.status === "ANTRI" || tx.status === "PROSES") && (
                               <button onClick={() => handleCancel(tx.id, tx.nomorInvoice)} className="px-2 py-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
                                 Batal

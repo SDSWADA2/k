@@ -41,7 +41,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
 
     const updateData: Record<string, unknown> = {};
-    if (status) updateData.status = status;
+    if (status) {
+      updateData.status = status;
+      if (status === "LUNAS" && dibayar === undefined && existing.dibayar < existing.total) {
+        updateData.dibayar = existing.total;
+        updateData.kembalian = 0;
+        if (!existing.metodePembayaran && !metodePembayaran) {
+          updateData.metodePembayaran = "TUNAI";
+        }
+      }
+    }
     if (metodePembayaran) updateData.metodePembayaran = metodePembayaran;
     if (dibayar !== undefined) {
       updateData.dibayar = dibayar;

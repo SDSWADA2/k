@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, Modal, Input } from "@/components/ui";
 import { formatDateTime, formatRupiah } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Link from "next/link";
@@ -52,6 +52,49 @@ export default function TransaksiDetailPage() {
   const [tx, setTx] = useState<TransaksiDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+
+  // Payment Settlement Modal
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [metodePembayaran, setMetodePembayaran] = useState("TUNAI");
+  const [dibayarInput, setDibayarInput] = useState("");
+  const [processingPay, setProcessingPay] = useState(false);
+
+  const handleOpenPayModal = () => {
+    if (!tx) return;
+    setDibayarInput(String(tx.total));
+    setMetodePembayaran(tx.metodePembayaran || "TUNAI");
+    setPayModalOpen(true);
+  };
+
+  const handleProcessPayment = async () => {
+    if (!tx) return;
+    const amount = parseFloat(dibayarInput.replace(/[^0-9.]/g, "")) || 0;
+    if (metodePembayaran === "TUNAI" && amount < tx.total) {
+      toast.error("Jumlah bayar kurang dari total tagihan!");
+      return;
+    }
+
+    setProcessingPay(true);
+    try {
+      const res = await fetch(`/api/transaksi/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "LUNAS",
+          metodePembayaran,
+          dibayar: amount,
+        }),
+      });
+      if (!res.ok) throw new Error("Gagal memproses pembayaran");
+      toast.success("✅ Pembayaran berhasil dicatat & Lunas!");
+      setPayModalOpen(false);
+      fetchDetail();
+    } catch (err: unknown) {
+      toast.error((err as Error).message);
+    } finally {
+      setProcessingPay(false);
+    }
+  };
 
   const fetchDetail = async () => {
     setLoading(true);
@@ -183,22 +226,24 @@ export default function TransaksiDetailPage() {
 
             {/* Status Change Dropdown */}
             {tx.status !== "BATAL" && tx.status !== "LUNAS" && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {tx.status === "ANTRI" && (
-                  <Button size="sm" loading={updating} onClick={() => handleUpdateStatus("PROSES")}>
+                  <Button size="sm" variant="outline" loading={updating} onClick={() => handleUpdateStatus("PROSES")}>
                     Mulai Kerjakan (Proses)
                   </Button>
                 )}
                 {tx.status === "PROSES" && (
-                  <Button size="sm" loading={updating} onClick={() => handleUpdateStatus("SELESAI")}>
+                  <Button size="sm" variant="outline" loading={updating} onClick={() => handleUpdateStatus("SELESAI")}>
                     Tandai Selesai
                   </Button>
                 )}
-                {tx.status === "SELESAI" && (
-                  <Button size="sm" loading={updating} onClick={() => handleUpdateStatus("LUNAS")}>
-                    Tandai Lunas
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                  onClick={handleOpenPayModal}
+                >
+                  💳 Bayar / Lunasi ({formatRupiah(tx.total)})
+                </Button>
               </div>
             )}
 
@@ -337,6 +382,136 @@ export default function TransaksiDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Modal Pelunasan Pembayaran */}
+        <Modal
+          isOpen={payModalOpen}
+          onClose={() => setPayModalOpen(false)}
+          title={`Pelunasan Transaksi ${tx.nomorInvoice}`}
+          size="md"
+        >
+          <div className="p-5 space-y-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center">
+              <div>
+                <p className="text-xs text-slate-500 font-medium">Total Tagihan:</p>
+                <p className="text-xl font-black text-violet-700">{formatRupiah(tx.total)}</p>
+              </div>
+              <div className="text-right text-xs text-slate-500">
+                <p className="font-semibold text-slate-800">{tx.pelanggan?.nama ?? "Pelanggan Umum"}</p>
+                <p className="font-mono text-[11px]">{tx.kendaraan?.nomorPolisi ?? "Tanpa Kendaraan"}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Metode Pembayaran</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: "TUNAI", label: "💵 Tunai" },
+                  { id: "QRIS", label: "📱 QRIS" },
+                  { id: "TRANSFER", label: "🏦 Transfer" },
+                  { id: "DEBIT", label: "💳 Debit" },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setMetodePembayaran(m.id);
+                      if (m.id !== "TUNAI") setDibayarInput(String(tx.total));
+                    }}
+                    className={`py-2 px-2 text-xs font-bold rounded-lg border transition-all text-center ${
+                      metodePembayaran === m.id
+                        ? "bg-violet-600 text-white border-violet-600 shadow-sm"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-semibold text-slate-700">Nominal Uang Diterima (Rp)</label>
+                <button
+                  type="button"
+                  onClick={() => setDibayarInput(String(tx.total))}
+                  className="text-[11px] font-bold text-violet-600 hover:underline"
+                >
+                  Uang Pas
+                </button>
+              </div>
+              <Input
+                type="text"
+                value={dibayarInput}
+                onChange={(e) => setDibayarInput(e.target.value)}
+                placeholder="0"
+                autoFocus
+              />
+
+              {/* Pecahan Uang Cepat */}
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                {[
+                  { val: tx.total, label: "Uang Pas" },
+                  { val: 50000, label: "50rb" },
+                  { val: 100000, label: "100rb" },
+                  { val: 150000, label: "150rb" },
+                  { val: 200000, label: "200rb" },
+                  { val: 500000, label: "500rb" },
+                ].map((btn, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setDibayarInput(String(btn.val))}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Kembalian / Kurang Information */}
+            {(() => {
+              const amount = parseFloat(dibayarInput.replace(/[^0-9.]/g, "")) || 0;
+              const kembalian = Math.max(0, amount - tx.total);
+              const kurang = Math.max(0, tx.total - amount);
+
+              return (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-semibold flex justify-between items-center ${
+                    kurang > 0 && metodePembayaran === "TUNAI"
+                      ? "bg-red-50 border-red-200 text-red-700"
+                      : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  }`}
+                >
+                  <span>
+                    {kurang > 0 && metodePembayaran === "TUNAI" ? "Sisa Kurang Bayar:" : "Kembalian Kasir:"}
+                  </span>
+                  <span className="text-sm font-black">
+                    {kurang > 0 && metodePembayaran === "TUNAI"
+                      ? formatRupiah(kurang)
+                      : formatRupiah(kembalian)}
+                  </span>
+                </div>
+              );
+            })()}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setPayModalOpen(false)}>
+                Batal
+              </Button>
+              <Button
+                type="button"
+                loading={processingPay}
+                onClick={handleProcessPayment}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Konfirmasi Lunas
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </AppShell>
   );

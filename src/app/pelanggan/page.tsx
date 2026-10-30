@@ -90,14 +90,23 @@ export default function PelangganPage() {
     }
   };
 
-  const handleDelete = async (id: string, nama: string) => {
-    if (!confirm(`Nonaktifkan pelanggan "${nama}"?`)) return;
+  const handleToggleAktif = async (p: Pelanggan) => {
+    const action = p.aktif ? "Nonaktifkan" : "Aktifkan";
+    if (!confirm(`${action} pelanggan "${p.nama}"?`)) return;
     try {
-      await fetch(`/api/pelanggan/${id}`, { method: "DELETE" });
-      toast.success("Pelanggan dinonaktifkan");
+      if (p.aktif) {
+        await fetch(`/api/pelanggan/${p.id}`, { method: "DELETE" });
+      } else {
+        await fetch(`/api/pelanggan/${p.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nama: p.nama, aktif: true }),
+        });
+      }
+      toast.success(`Pelanggan berhasil di${p.aktif ? "nonaktifkan" : "aktifkan"}`);
       fetchData();
     } catch {
-      toast.error("Gagal menghapus pelanggan");
+      toast.error(`Gagal ${action.toLowerCase()} pelanggan`);
     }
   };
 
@@ -145,6 +154,7 @@ export default function PelangganPage() {
                     <th>Nama</th>
                     <th>Telepon</th>
                     <th>Tipe</th>
+                    <th>Status</th>
                     <th>Poin</th>
                     <th>Kendaraan</th>
                     <th>Transaksi</th>
@@ -161,6 +171,11 @@ export default function PelangganPage() {
                       </td>
                       <td className="text-slate-600">{p.telepon ?? "-"}</td>
                       <td><TipeBadge tipe={p.tipe} /></td>
+                      <td>
+                        <Badge variant={p.aktif ? "success" : "danger"} size="sm">
+                          {p.aktif ? "Aktif" : "Nonaktif"}
+                        </Badge>
+                      </td>
                       <td className="font-semibold text-violet-600">{p.poin}</td>
                       <td className="text-center">{p._count?.kendaraan ?? 0}</td>
                       <td className="text-center">{p._count?.transaksi ?? 0}</td>
@@ -173,10 +188,14 @@ export default function PelangganPage() {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(p.id, p.nama)}
-                            className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            onClick={() => handleToggleAktif(p)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                              p.aktif
+                                ? "text-slate-500 hover:text-red-600 hover:bg-red-50"
+                                : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                            }`}
                           >
-                            Nonaktif
+                            {p.aktif ? "Nonaktif" : "Aktifkan"}
                           </button>
                         </div>
                       </td>

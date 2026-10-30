@@ -117,6 +117,18 @@ export default function SparePartPage() {
     }
   };
 
+  const handleDelete = async (id: string, nama: string) => {
+    if (!confirm(`Nonaktifkan / hapus spare part "${nama}"?`)) return;
+    try {
+      const res = await fetch(`/api/spare-part/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Gagal menghapus spare part");
+      toast.success("Spare part dinonaktifkan");
+      fetchData();
+    } catch (err: unknown) {
+      toast.error((err as Error).message);
+    }
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -193,7 +205,8 @@ export default function SparePartPage() {
                       <td><StokBadge stok={p.stok} stokMinimum={p.stokMinimum} /></td>
                       <td>
                         <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => openEdit(p)} className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-violet-700 hover:bg-violet-50 rounded-md transition-colors">Edit</button>
+                          <button onClick={() => openEdit(p)} className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-violet-700 hover:bg-violet-50 rounded-md transition-colors">Edit</button>
+                          <button onClick={() => handleDelete(p.id, p.nama)} className="px-2 py-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors">Hapus</button>
                         </div>
                       </td>
                     </tr>

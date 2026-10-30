@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
   const groupBy = searchParams.get("groupBy") ?? "day"; // day | month
 
-  const startDate = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const endDate = to ? new Date(to + "T23:59:59") : new Date();
+  const startDate = from ? new Date(`${from}T00:00:00`) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const endDate = to ? new Date(`${to}T23:59:59.999`) : new Date();
 
   try {
     const transaksi = await prisma.transaksi.findMany({

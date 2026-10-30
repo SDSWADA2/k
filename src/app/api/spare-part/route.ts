@@ -21,7 +21,12 @@ export async function GET(req: NextRequest) {
       ];
     }
     if (kategoriId) where.kategoriId = kategoriId;
-    if (stokKritis) where.stok = { lte: prisma.sparePart.fields.stokMinimum };
+    if (stokKritis) {
+      const critical = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM spare_part WHERE stok <= stokMinimum AND aktif = 1
+      `;
+      where.id = { in: critical.map((c) => c.id) };
+    }
 
     const [data, total] = await Promise.all([
       prisma.sparePart.findMany({
